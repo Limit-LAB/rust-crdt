@@ -59,6 +59,11 @@ impl<T> From<(BigRational, T)> for Identifier<T> {
 }
 
 impl<T: Clone + Ord + Eq> Identifier<T> {
+    /// Construct an Identifier manually from a rational and a value.
+    pub fn new(rational: impl Into<BigRational>, value: T) -> Self {
+        Self(vec![(rational.into(), value)])
+    }
+
     /// Get a reference to the value this entry represents.
     pub fn value(&self) -> &T {
         self.0.last().map(|(_, elem)| elem).unwrap() // TODO: remove this unwrap
