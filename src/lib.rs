@@ -65,6 +65,7 @@ pub mod list;
 #[cfg(feature = "num")]
 pub use {
     gcounter::GCounter, glist::GList, identifier::Identifier, list::List, pncounter::PNCounter,
+    num,
 };
 
 // /// Version Vector with Exceptions
