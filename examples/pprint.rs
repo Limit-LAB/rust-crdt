@@ -7,7 +7,7 @@ fn main() {
     vclock.apply(Dot::new(31231, 2));
     vclock.apply(Dot::new(4829, 9));
     vclock.apply(Dot::new(87132, 32));
-    println!("vclock:\t{}", vclock);
+    println!("vclock:\t{vclock}");
 
     let mut reg = MVReg::new();
 
@@ -16,5 +16,5 @@ fn main() {
     reg.apply(op1);
     reg.apply(op2);
 
-    println!("reg:\t{}", reg);
+    println!("reg:\t{reg}");
 }

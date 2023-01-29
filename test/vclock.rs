@@ -1,6 +1,6 @@
-use crdts::*;
-
 use std::cmp::Ordering;
+
+use crdts::*;
 
 quickcheck! {
     fn prop_into_iter_produces_same_vclock(clock: VClock<u8>) -> bool {

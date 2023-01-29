@@ -1,9 +1,6 @@
 //! # GList - Grow-only List CRDT
 
-use core::convert::Infallible;
-use core::fmt;
-use core::iter::FromIterator;
-use core::ops::Bound::*;
+use core::{convert::Infallible, fmt, iter::FromIterator, ops::Bound::*};
 use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
@@ -21,9 +18,9 @@ pub enum Op<T> {
 }
 
 /// The GList is a grow-only list, that is, it allows inserts but not deletes.
-/// Elements in the list are paths through an ordered tree, the tree grows deeper
-/// when we try to insert between two elements who were inserted concurrently and
-/// whose paths happen to have the same prefix.
+/// Elements in the list are paths through an ordered tree, the tree grows
+/// deeper when we try to insert between two elements who were inserted
+/// concurrently and whose paths happen to have the same prefix.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct GList<T: Ord> {
     list: BTreeSet<Identifier<T>>,
@@ -34,10 +31,10 @@ impl<T: fmt::Display + Ord> fmt::Display for GList<T> {
         write!(f, "GList[")?;
         let mut iter = self.list.iter();
         if let Some(e) = iter.next() {
-            write!(f, "{}", e)?;
+            write!(f, "{e}")?;
         }
         for e in iter {
-            write!(f, "{}", e)?;
+            write!(f, "{e}")?;
         }
         write!(f, "]")
     }
@@ -62,7 +59,8 @@ impl<T: Ord + Clone> GList<T> {
         self.list.iter().map(|id| id.value()).collect()
     }
 
-    /// Read the elements of the list into a user defined container, consuming the list in the process.
+    /// Read the elements of the list into a user defined container, consuming
+    /// the list in the process.
     pub fn read_into<C: FromIterator<T>>(self) -> C {
         self.list.into_iter().map(|id| id.into_value()).collect()
     }

@@ -435,8 +435,8 @@ impl<A: Ord + Hash + Arbitrary + Debug, M: Hash + Eq + Arbitrary> Arbitrary for 
 impl<M: Debug, A: Ord + Hash + Debug> Debug for Op<M, A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Op::Add { dot, members } => write!(f, "Add({:?}, {:?})", dot, members),
-            Op::Rm { clock, members } => write!(f, "Rm({:?}, {:?})", clock, members),
+            Op::Add { dot, members } => write!(f, "Add({dot:?}, {members:?})"),
+            Op::Rm { clock, members } => write!(f, "Rm({clock:?}, {members:?})"),
         }
     }
 }

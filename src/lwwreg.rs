@@ -47,7 +47,7 @@ impl error::Error for Validation {
 
 impl fmt::Display for Validation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

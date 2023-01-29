@@ -1,5 +1,4 @@
 use crdts::{mvreg::Op, *};
-
 use quickcheck::TestResult;
 
 #[derive(Debug, Clone)]

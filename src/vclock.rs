@@ -72,7 +72,7 @@ impl<A: Ord + Display> Display for VClock<A> {
             if i > 0 {
                 write!(f, ", ")?;
             }
-            write!(f, "{}:{}", actor, count)?;
+            write!(f, "{actor}:{count}")?;
         }
         write!(f, ">")
     }

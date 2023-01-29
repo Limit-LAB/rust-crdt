@@ -1,7 +1,8 @@
-use crdts::list::{List, Op};
-use crdts::CmRDT;
-use rand::distributions::Alphanumeric;
-use rand::Rng;
+use crdts::{
+    list::{List, Op},
+    CmRDT,
+};
+use rand::{distributions::Alphanumeric, Rng};
 
 type SiteId = u32;
 #[derive(Debug, Clone)]
@@ -14,11 +15,7 @@ impl Arbitrary for OperationList {
     fn arbitrary<G: Gen>(g: &mut G) -> OperationList {
         let size = {
             let s = g.size();
-            if s == 0 {
-                0
-            } else {
-                g.gen_range(0, s)
-            }
+            if s == 0 { 0 } else { g.gen_range(0, s) }
         };
 
         let actor = g.gen();
@@ -269,7 +266,7 @@ fn test_mutual_insert_qc1() {
             ((&mut site1, 1), &mut site0)
         };
         let i = idx % (source.len() + 1);
-        println!("{:?} inserting {} @ {}", source_actor, elem, i);
+        println!("{source_actor:?} inserting {elem} @ {i}");
         let op = source.insert_index(i, elem, source_actor);
         source.apply(op.clone());
         replica.apply(op);
@@ -286,8 +283,8 @@ fn test_deep_inserts() {
     // By inserting always at the middle of the array, we construct increasingly
     // complex identifiers.
     //
-    // Previous implementations of the List depended on an exponential which would panic once the tree
-    // reached a certain depth.
+    // Previous implementations of the List depended on an exponential which would
+    // panic once the tree reached a certain depth.
 
     let mut site = List::new();
 

@@ -1,7 +1,8 @@
+use crdts::{
+    glist::{GList, Op},
+    CmRDT, CvRDT, Identifier,
+};
 use num::BigRational;
-
-use crdts::glist::{GList, Op};
-use crdts::{CmRDT, CvRDT, Identifier};
 use quickcheck_macros::quickcheck;
 
 #[test]
@@ -19,7 +20,7 @@ fn test_concurrent_inserts_with_same_identifier_can_be_split() {
     let op_c = list.insert_after(a_entry, 'c');
     list.apply(op_c);
 
-    println!("{}", list);
+    println!("{list}");
     assert_eq!(list.read::<String>(), "acb");
 }
 
@@ -38,7 +39,7 @@ fn test_append_increments_entry() {
         ],
         glist.iter().cloned().collect::<Vec<_>>()
     );
-    println!("{:?}", glist);
+    println!("{glist:?}");
     assert_eq!("abc", glist.read::<String>());
 }
 
@@ -52,7 +53,7 @@ fn test_insert_at_front() {
     let op = glist.insert_before(glist.first(), 1);
     glist.apply(op);
 
-    println!("{:?}", glist);
+    println!("{glist:?}");
     assert_eq!(vec![&1, &0], glist.read::<Vec<_>>());
 }
 

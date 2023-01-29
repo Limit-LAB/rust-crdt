@@ -1,8 +1,9 @@
 use std::collections::BTreeSet;
 
-use crdts::merkle_reg::{Hash, MerkleReg, Node};
-use crdts::{CmRDT, CvRDT};
-
+use crdts::{
+    merkle_reg::{Hash, MerkleReg, Node},
+    CmRDT, CvRDT,
+};
 use quickcheck_macros::quickcheck;
 
 #[test]

@@ -62,21 +62,18 @@ pub mod ctx;
 #[cfg(feature = "num")]
 pub mod list;
 
+/// A re-export of the quickcheck crate for external property tests
+#[cfg(feature = "quickcheck")]
+pub use quickcheck;
 #[cfg(feature = "num")]
 pub use {
-    gcounter::GCounter, glist::GList, identifier::Identifier, list::List, pncounter::PNCounter,
-    num,
+    gcounter::GCounter, glist::GList, identifier::Identifier, list::List, num, pncounter::PNCounter,
 };
 
 // /// Version Vector with Exceptions
 // pub mod vvwe;
-
 /// Top-level re-exports for CRDT structures.
 pub use crate::{
     dot::Dot, dot::DotRange, dot::OrdDot, gset::GSet, lwwreg::LWWReg, map::Map, mvreg::MVReg,
     orswot::Orswot, vclock::VClock,
 };
-
-/// A re-export of the quickcheck crate for external property tests
-#[cfg(feature = "quickcheck")]
-pub use quickcheck;

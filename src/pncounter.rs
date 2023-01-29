@@ -186,10 +186,10 @@ mod test {
 
                 results.insert(merged.read());
                 if results.len() > 1 {
-                    println!("opvec: {:?}", ops);
-                    println!("results: {:?}", results);
+                    println!("opvec: {ops:?}");
+                    println!("results: {results:?}");
                     println!("witnesses: {:?}", &witnesses);
-                    println!("merged: {:?}", merged);
+                    println!("merged: {merged:?}");
                 }
             }
             results.len() == 1

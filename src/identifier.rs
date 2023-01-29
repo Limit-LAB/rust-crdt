@@ -1,17 +1,18 @@
 //! Dense Identifiers.
 //!
-//! It's sometimes usefult to be able to create identifiers for which we know there
-//! is always space between values to create another.
+//! It's sometimes usefult to be able to create identifiers for which we know
+//! there is always space between values to create another.
 
-//! That is, if we have identifiers `a`, `b` with `a != b` then we can always construct
-//! an  identifier `c` s.t. `a < c < b` or `a > c > b`.
+//! That is, if we have identifiers `a`, `b` with `a != b` then we can always
+//! construct an  identifier `c` s.t. `a < c < b` or `a > c > b`.
 //!
-//! The GList and List CRDT's rely on this property so that we may always insert elements
-//! between any existing elements.
-use core::cmp::Ordering;
-use core::fmt;
+//! The GList and List CRDT's rely on this property so that we may always insert
+//! elements between any existing elements.
 
-    bigint::RandBigInt,
+use core::{cmp::Ordering, fmt};
+
+use num::{bigint::RandBigInt, BigRational, One, Zero};
+use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 
 fn rational_between(low: Option<&BigRational>, high: Option<&BigRational>) -> BigRational {
@@ -222,10 +223,10 @@ impl<T: fmt::Display> fmt::Display for Identifier<T> {
         write!(f, "ID[")?;
         let mut iter = self.0.iter();
         if let Some((r, e)) = iter.next() {
-            write!(f, "{}:{}", r, e)?;
+            write!(f, "{r}:{e}")?;
         }
         for (r, e) in iter {
-            write!(f, ", {}:{}", r, e)?;
+            write!(f, ", {r}:{e}")?;
         }
         write!(f, "]")
     }
@@ -264,9 +265,10 @@ impl<T: Arbitrary> Arbitrary for Identifier<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
+
+    use super::*;
 
     #[test]
     fn test_adding_zero_node_makes_identifier_smaller() {
@@ -285,16 +287,16 @@ mod tests {
             (BigRational::new(0i64.into(), 1.into()), 0),
         ]);
         let id_b = Identifier(vec![(BigRational::new(0i64.into(), 1i64.into()), 0)]);
-        println!("id_a: {}", id_a);
-        println!("id_b: {}", id_b);
+        println!("id_a: {id_a}");
+        println!("id_b: {id_b}");
         println!("id_a < id_b: {:?}", id_a < id_b);
         println!("id_b < id_a: {:?}", id_b < id_a);
         assert!(id_a < id_b);
 
         let id_mid = Identifier::between(Some(&id_a), Some(&id_b), 0);
-        println!("minmax: {}, {}", id_a, id_b);
-        assert!(id_a < id_mid, "{} < {}", id_a, id_mid);
-        assert!(id_mid < id_b, "{} < {}", id_mid, id_b);
+        println!("minmax: {id_a}, {id_b}");
+        assert!(id_a < id_mid, "{id_a} < {id_mid}");
+        assert!(id_mid < id_b, "{id_mid} < {id_b}");
     }
 
     #[test]
@@ -321,8 +323,8 @@ mod tests {
             assert_eq!(id_min, id_mid);
             assert_eq!(id_max, id_mid);
         } else {
-            assert!(id_min < id_mid, "{} < {}", id_min, id_mid);
-            assert!(id_mid < id_max, "{} < {}", id_mid, id_max);
+            assert!(id_min < id_mid, "{id_min} < {id_mid}");
+            assert!(id_mid < id_max, "{id_mid} < {id_max}");
         }
     }
 
@@ -345,8 +347,8 @@ mod tests {
             assert_eq!(id_min, id_mid);
             assert_eq!(id_max, id_mid);
         } else {
-            assert!(id_min < id_mid, "{} < {}", id_min, id_mid);
-            assert!(id_mid < id_max, "{} < {}", id_mid, id_max);
+            assert!(id_min < id_mid, "{id_min} < {id_mid}");
+            assert!(id_mid < id_max, "{id_mid} < {id_max}");
         }
     }
 
@@ -364,8 +366,8 @@ mod tests {
             assert_eq!(id_min, id_mid);
             assert_eq!(id_max, id_mid);
         } else {
-            assert!(id_min < id_mid, "{} < {}", id_min, id_mid);
-            assert!(id_mid < id_max, "{} < {}", id_mid, id_max);
+            assert!(id_min < id_mid, "{id_min} < {id_mid}");
+            assert!(id_mid < id_max, "{id_mid} < {id_max}");
         }
 
         TestResult::passed()
@@ -394,7 +396,7 @@ mod tests {
         assert!(id_min < id_max);
 
         let id_mid = Identifier::between(Some(&id_min), Some(&id_max), marker);
-        println!("mid: {}", id_mid);
+        println!("mid: {id_mid}");
         assert!(id_min < id_mid);
         assert!(id_mid < id_max);
     }

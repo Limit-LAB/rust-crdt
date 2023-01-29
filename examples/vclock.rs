@@ -1,6 +1,7 @@
 extern crate crdts;
-use crdts::{CmRDT, CvRDT, VClock};
 use std::cmp::Ordering::*;
+
+use crdts::{CmRDT, CvRDT, VClock};
 
 fn main() {
     #[derive(Debug, Default, Clone, PartialEq)]
