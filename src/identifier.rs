@@ -11,7 +11,10 @@
 
 use core::{cmp::Ordering, fmt};
 
-use num::{bigint::RandBigInt, BigRational, One, Zero};
+use num::{
+    bigint::{RandBigInt, ToBigInt},
+    BigRational, One, Zero,
+};
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 
@@ -27,10 +30,9 @@ fn rational_between(low: Option<&BigRational>, high: Option<&BigRational>) -> Bi
 fn random_rational_between(low: Option<&BigRational>, high: Option<&BigRational>) -> BigRational {
     #[inline(always)]
     fn rand_pos_rational() -> BigRational {
-        let mut rng = rand::thread_rng();
-        let numerator = rng.gen_biguint(16);
-        let denominator = rng.gen_biguint(16);
-        BigRational::new(numerator.into(), denominator.into())
+        let numerator = rand::random::<u8>().to_bigint().unwrap();
+        let denominator = thread_rng().gen_range(1, u8::MAX).to_bigint().unwrap();
+        BigRational::new(numerator, denominator)
     }
     match (low, high) {
         (None, None) => rand_pos_rational(),
@@ -39,7 +41,10 @@ fn random_rational_between(low: Option<&BigRational>, high: Option<&BigRational>
         (Some(low), Some(high)) => {
             let mul = BigRational::from_float(thread_rng().gen_range(0., 1.))
                 .expect("Failed to convert random float to BigRational");
-            low + (high - low) * mul
+            let ret = low + (high - low) * mul;
+            debug_assert!(ret > *low);
+            debug_assert!(ret < *high);
+            ret
         }
     }
 }
@@ -161,7 +166,9 @@ impl<T: Clone + Ord + Eq> Identifier<T> {
         match (low, high) {
             (Some(low), Some(high)) => {
                 match low.cmp(high) {
-                    Ordering::Greater => return Self::between(Some(high), Some(low), marker),
+                    Ordering::Greater => {
+                        return Self::between_with_randomness(Some(high), Some(low), marker);
+                    }
                     Ordering::Equal => return high.clone(),
                     _ => (),
                 }
