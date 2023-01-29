@@ -11,7 +11,7 @@
 use core::cmp::Ordering;
 use core::fmt;
 
-use num::{BigRational, One, Zero};
+    bigint::RandBigInt,
 use serde::{Deserialize, Serialize};
 
 fn rational_between(low: Option<&BigRational>, high: Option<&BigRational>) -> BigRational {
@@ -20,6 +20,26 @@ fn rational_between(low: Option<&BigRational>, high: Option<&BigRational>) -> Bi
         (Some(low), None) => low + BigRational::one(),
         (None, Some(high)) => high - BigRational::one(),
         (Some(low), Some(high)) => (low + high) / BigRational::from_integer(2.into()),
+    }
+}
+
+fn random_rational_between(low: Option<&BigRational>, high: Option<&BigRational>) -> BigRational {
+    #[inline(always)]
+    fn rand_pos_rational() -> BigRational {
+        let mut rng = rand::thread_rng();
+        let numerator = rng.gen_biguint(16);
+        let denominator = rng.gen_biguint(16);
+        BigRational::new(numerator.into(), denominator.into())
+    }
+    match (low, high) {
+        (None, None) => rand_pos_rational(),
+        (Some(low), None) => low + rand_pos_rational(),
+        (None, Some(high)) => high - rand_pos_rational(),
+        (Some(low), Some(high)) => {
+            let mul = BigRational::from_float(thread_rng().gen_range(0., 1.))
+                .expect("Failed to convert random float to BigRational");
+            low + (high - low) * mul
+        }
     }
 }
 
@@ -125,6 +145,69 @@ impl<T: Clone + Ord + Eq> Identifier<T> {
 
             (low, high) => Self(vec![(
                 rational_between(
+                    low.and_then(|low_entry| low_entry.0.first().map(|(r, _)| r)),
+                    high.and_then(|high_entry| high_entry.0.first().map(|(r, _)| r)),
+                ),
+                marker,
+            )]),
+        }
+    }
+
+    /// Construct an entry between low and high holding the given element with
+    /// random offset.
+    #[cfg(feature = "num_rand")]
+    pub fn between_with_randomness(low: Option<&Self>, high: Option<&Self>, marker: T) -> Self {
+        match (low, high) {
+            (Some(low), Some(high)) => {
+                match low.cmp(high) {
+                    Ordering::Greater => return Self::between(Some(high), Some(low), marker),
+                    Ordering::Equal => return high.clone(),
+                    _ => (),
+                }
+
+                // Walk both paths until we reach a fork, constructing the path between these
+                // two entries as we go.
+
+                let mut path: Vec<(BigRational, T)> = vec![];
+
+                let mut low_path: Box<dyn std::iter::Iterator<Item = &(BigRational, T)>> =
+                    Box::new(low.0.iter());
+                let mut high_path: Box<dyn std::iter::Iterator<Item = &(BigRational, T)>> =
+                    Box::new(high.0.iter());
+                loop {
+                    match (low_path.next(), high_path.next()) {
+                        (Some((l_ratio, l_m)), Some((h_ratio, h_m))) if l_ratio == h_ratio => {
+                            if l_m < &marker && &marker < h_m {
+                                // The marker fits between the low and high marker
+                                path.push((h_ratio.clone(), marker));
+                                break;
+                            } else if l_m == h_m {
+                                // We are on a common prefix of the two paths, copy it over
+                                // to our output path and continue till we reach a fork.
+                                path.push((h_ratio.clone(), h_m.clone()));
+                            } else {
+                                // Otherwise, the two paths have diverged.
+                                path.push((h_ratio.clone(), h_m.clone()));
+                                low_path = Box::new(std::iter::empty());
+                            }
+                        }
+                        (low_node, high_node) => {
+                            path.push((
+                                random_rational_between(
+                                    low_node.map(|n| &n.0),
+                                    high_node.map(|n| &n.0),
+                                ),
+                                marker,
+                            ));
+                            break;
+                        }
+                    }
+                }
+
+                Self(path)
+            }
+            (low, high) => Self(vec![(
+                random_rational_between(
                     low.and_then(|low_entry| low_entry.0.first().map(|(r, _)| r)),
                     high.and_then(|high_entry| high_entry.0.first().map(|(r, _)| r)),
                 ),
@@ -314,5 +397,33 @@ mod tests {
         println!("mid: {}", id_mid);
         assert!(id_min < id_mid);
         assert!(id_mid < id_max);
+    }
+
+    #[quickcheck]
+    fn random_rational_within_range(a: f64, b: f64) {
+        let (a, b) = if a < b { (a, b) } else { (b, a) };
+        let (a, b) = (a as i64, b as i64);
+        let (a, b) = (
+            BigRational::from_integer(a.into()),
+            BigRational::from_integer(b.into()),
+        );
+        let r = random_rational_between(Some(&a), Some(&b));
+        assert!(a <= r);
+        assert!(r <= b);
+    }
+
+    #[test]
+    fn random_rational_within_range_spec() {
+        let a = 1.0;
+        let b = 1.00001;
+        let (a, b) = if a < b { (a, b) } else { (b, a) };
+        let (a, b) = (a as i64, b as i64);
+        let (a, b) = (
+            BigRational::from_integer(a.into()),
+            BigRational::from_integer(b.into()),
+        );
+        let r = random_rational_between(Some(&a), Some(&b));
+        assert!(a <= r);
+        assert!(r <= b);
     }
 }

@@ -132,6 +132,29 @@ impl<T, A: Ord + Clone> List<T, A> {
         Op::Insert { id, val }
     }
 
+    /// Generate an op to insert the given element at the given index with random offset being added to the id.
+    /// If `ix` is greater than the length of the List then it is appended to the end.
+    #[cfg(feature = "num_rand")]
+    pub fn insert_index_with_randomness(&self, mut ix: usize, val: T, actor: A) -> Op<T, A> {
+        ix = ix.min(self.seq.len());
+        // TODO: replace this logic with BTreeMap::range()
+        let (prev, next) = match ix.checked_sub(1) {
+            Some(indices_to_drop) => {
+                let mut indices = self.seq.keys().skip(indices_to_drop);
+                (indices.next(), indices.next())
+            }
+            None => {
+                // Inserting at the front of the list
+                let mut indices = self.seq.keys();
+                (None, indices.next())
+            }
+        };
+
+        let dot = self.clock.inc(actor);
+        let id = Identifier::between_with_randomness(prev, next, dot.into());
+        Op::Insert { id, val }
+    }
+
     /// Generate an op to insert the given element with given id.
     pub fn insert_id(&self, id: impl Into<BigRational>, val: T, actor: A) -> Op<T, A> {
         let dot = self.clock.inc(actor);
