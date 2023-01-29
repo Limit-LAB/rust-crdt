@@ -15,7 +15,7 @@
 //! LSEQ differs from Logoot in that it adds the concept of randomized
 //! boundary+/- allocation strategy to prevent the tree from growing too
 //! deep too quickly.
-//!
+//!/*  */
 //! In contrast with the LSEQ/LOGOOT approach, we use rational numbers as
 //! identifiers. Where LSEQ/LOGOOT constrain themselves to the interval (0,1),
 //! we expand to the entire rational number line. This removes some edge
@@ -44,6 +44,7 @@ use core::fmt;
 use core::iter::FromIterator;
 use std::collections::BTreeMap;
 
+use num::BigRational;
 use serde::{Deserialize, Serialize};
 
 use crate::{CmRDT, Dot, Identifier, OrdDot, VClock};
@@ -75,8 +76,7 @@ pub enum Op<T, A: Ord> {
         id: Identifier<OrdDot<A>>,
         /// id of site that issued delete
         dot: Dot<A>,
-    },
-}
+    },}
 
 impl<T, A: Ord + Clone + Eq> Op<T, A> {
     /// Returns the Identifier this operation is concerning.
@@ -129,6 +129,13 @@ impl<T, A: Ord + Clone> List<T, A> {
 
         let dot = self.clock.inc(actor);
         let id = Identifier::between(prev, next, dot.into());
+        Op::Insert { id, val }
+    }
+
+    /// Generate an op to insert the given element with given id.
+    pub fn insert_id(&self, id: impl Into<BigRational>, val: T, actor: A) -> Op<T, A> {
+        let dot = self.clock.inc(actor);
+        let id = Identifier::new(id, dot.into());
         Op::Insert { id, val }
     }
 
