@@ -4,9 +4,8 @@ use core::{fmt, iter::FromIterator};
 
 use crossbeam_skiplist::{map::Entry, SkipMap};
 use num::BigRational;
-use serde::{Deserialize, Serialize};
 
-use crate::{CmRDT, Dot, Identifier, OrdDot, SVClock, SyncedCmRDT};
+use crate::{list::Op, CmRDT, Identifier, OrdDot, SVClock, SyncedCmRDT};
 
 /// As described in the module documentation:
 ///
@@ -19,38 +18,19 @@ pub struct SList<T, A: Ord> {
     clock: SVClock<A>,
 }
 
-/// Operations that can be performed on a List
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Op<T, A: Ord> {
-    /// Insert an element
-    Insert {
-        /// The Identifier to insert at
-        id: Identifier<OrdDot<A>>,
-        /// Element to insert
-        val: T,
-    },
-    /// Delete an element
-    Delete {
-        /// The Identifier of the insertion we're removing
-        id: Identifier<OrdDot<A>>,
-        /// id of site that issued delete
-        dot: Dot<A>,
-    },
-}
-
-impl<T, A: Ord + Clone + Eq> Op<T, A> {
-    /// Returns the Identifier this operation is concerning.
-    pub fn id(&self) -> &Identifier<OrdDot<A>> {
-        match self {
-            Op::Insert { id, .. } | Op::Delete { id, .. } => id,
-        }
-    }
-
-    /// Return the Dot originating the operation.
-    pub fn dot(&self) -> Dot<A> {
-        match self {
-            Op::Insert { id, .. } => id.value().clone().into(),
-            Op::Delete { dot, .. } => dot.clone(),
+impl<T, A> Clone for SList<T, A>
+where
+    T: Clone + Send + 'static,
+    A: Clone + Ord + Send + 'static,
+{
+    fn clone(&self) -> Self {
+        let seq = SkipMap::new();
+        self.seq.iter().for_each(|e| {
+            seq.insert(e.key().clone(), e.value().clone());
+        });
+        Self {
+            seq,
+            clock: self.clock.clone(),
         }
     }
 }
