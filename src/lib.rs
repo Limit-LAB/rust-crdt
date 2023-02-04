@@ -27,6 +27,9 @@ pub mod merkle_reg;
 /// This module contains the Vector Clock
 pub mod vclock;
 
+#[cfg(feature = "sync")]
+pub mod svclock;
+
 /// This module contains the Dot (Actor + Sequence Number)
 pub mod dot;
 
@@ -62,6 +65,9 @@ pub mod ctx;
 #[cfg(feature = "num")]
 pub mod list;
 
+#[cfg(all(feature = "num", feature = "sync"))]
+pub mod slist;
+
 /// A re-export of the quickcheck crate for external property tests
 #[cfg(feature = "quickcheck")]
 pub use quickcheck;
@@ -69,6 +75,8 @@ pub use quickcheck;
 pub use {
     gcounter::GCounter, glist::GList, identifier::Identifier, list::List, num, pncounter::PNCounter,
 };
+#[cfg(feature = "sync")]
+pub use {slist::SList, svclock::SVClock, traits::SyncedCmRDT};
 
 // /// Version Vector with Exceptions
 // pub mod vvwe;

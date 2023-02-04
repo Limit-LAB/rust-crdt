@@ -12,7 +12,7 @@
 use core::{cmp::Ordering, fmt};
 
 use num::{
-    bigint::{RandBigInt, ToBigInt},
+    bigint::{ToBigInt},
     BigRational, One, Zero,
 };
 use rand::{thread_rng, Rng};

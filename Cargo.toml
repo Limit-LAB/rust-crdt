@@ -21,9 +21,12 @@ quickcheck = ["dep:quickcheck"]
 num = ["dep:num"]
 num_rand = ["num/rand", "dep:rand"]
 merkle = ["dep:tiny-keccak"]
+sync = ["dep:crossbeam-skiplist"]
 
 [dependencies]
 serde = { version = "~1.0.91", features = ["derive"] }
+
+crossbeam-skiplist = { version = "0.1.1", optional = true }
 
 # glist, list, pncounter, gcounter
 num = { version = "0.3.1", features = ["serde"], optional = true }
