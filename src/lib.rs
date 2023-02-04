@@ -76,7 +76,10 @@ pub use {
     gcounter::GCounter, glist::GList, identifier::Identifier, list::List, num, pncounter::PNCounter,
 };
 #[cfg(feature = "sync")]
-pub use {slist::SList, svclock::SVClock, traits::SyncedCmRDT};
+pub use {slist::SList, svclock::SVClock, sync::ListEntry, traits::SyncedCmRDT};
+
+#[cfg(feature = "sync")]
+mod sync;
 
 // /// Version Vector with Exceptions
 // pub mod vvwe;

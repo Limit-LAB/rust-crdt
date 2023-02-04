@@ -19,47 +19,25 @@ use core::{
     mem,
 };
 
-use crossbeam_skiplist::{map::Entry, SkipMap};
+use crossbeam_skiplist::map::Entry;
 
-use crate::{CmRDT, Dot, DotRange, SyncedCmRDT};
+use crate::{sync::SyncMap, CmRDT, Dot, DotRange, SyncedCmRDT};
 
 /// A `SVClock` is a synced version of [`VClock`].
 /// It is possible to update a `SVClock` with a immutable reference.
-#[derive(Debug)]
-pub struct SVClock<A: Ord> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SVClock<A: Ord + Send + 'static> {
     /// dots is the mapping from actors to their associated counters
-    pub dots: SkipMap<A, u64>,
+    pub dots: SyncMap<A, u64>,
 }
 
-impl<A: Clone + Ord + Send + 'static> Clone for SVClock<A> {
-    fn clone(&self) -> Self {
-        let dots = SkipMap::new();
-        self.dots.iter().for_each(|e| {
-            dots.insert(e.key().clone(), *e.value());
-        });
-        Self { dots }
-    }
-}
-
-impl<A: Ord> Default for SVClock<A> {
+impl<A: Ord + Send> Default for SVClock<A> {
     fn default() -> Self {
-        Self {
-            dots: SkipMap::new(),
-        }
+        Self::new()
     }
 }
 
-impl<A: Ord + PartialEq> PartialEq for SVClock<A> {
-    fn eq(&self, other: &SVClock<A>) -> bool {
-        self.dots.len() == other.dots.len()
-            && self
-                .iter()
-                .zip(other.iter())
-                .all(|(a, b)| a.value() == b.value())
-    }
-}
-
-impl<A: Ord + PartialEq> PartialOrd for SVClock<A> {
+impl<A: Send + Ord + PartialEq> PartialOrd for SVClock<A> {
     fn partial_cmp(&self, other: &SVClock<A>) -> Option<Ordering> {
         // This algorithm is pretty naive, I think there's a way to
         // just track if the ordering changes as we iterate over the
@@ -79,7 +57,7 @@ impl<A: Ord + PartialEq> PartialOrd for SVClock<A> {
     }
 }
 
-impl<A: Ord + Display> Display for SVClock<A> {
+impl<A: Send + Ord + Display> Display for SVClock<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "<")?;
         for (i, e) in self.dots.iter().enumerate() {
@@ -93,7 +71,7 @@ impl<A: Ord + Display> Display for SVClock<A> {
     }
 }
 
-impl<A: Ord + Clone + Debug + Send + 'static> CmRDT for SVClock<A> {
+impl<A: Send + Ord + Clone + Debug + Send + 'static> CmRDT for SVClock<A> {
     type Op = Dot<A>;
     type Validation = DotRange<A>;
 
@@ -129,7 +107,7 @@ impl<A: Ord + Clone + Debug + Send + 'static> CmRDT for SVClock<A> {
     }
 }
 
-impl<A: Ord + Clone + Debug + Send + 'static> SyncedCmRDT for SVClock<A> {
+impl<A: Send + Ord + Clone + Debug + 'static> SyncedCmRDT for SVClock<A> {
     fn synced_apply(&self, dot: Self::Op) {
         if self.get(&dot.actor) < dot.counter {
             self.dots.insert(dot.actor, dot.counter);
@@ -137,7 +115,7 @@ impl<A: Ord + Clone + Debug + Send + 'static> SyncedCmRDT for SVClock<A> {
     }
 }
 
-impl<A: Ord> SVClock<A> {
+impl<A: Send + Ord> SVClock<A> {
     /// Returns a new `VClock` instance.
     pub fn new() -> Self {
         Default::default()
@@ -167,7 +145,7 @@ impl<A: Ord> SVClock<A> {
     /// ```
     pub fn inc(&self, actor: A) -> Dot<A>
     where
-        A: Clone,
+        A: Send + Clone,
     {
         self.dot(actor).inc()
     }
@@ -196,7 +174,7 @@ impl<A: Ord> SVClock<A> {
     /// ```
     pub fn concurrent(&self, other: &SVClock<A>) -> bool
     where
-        A: Clone,
+        A: Send + Clone,
     {
         self.partial_cmp(other).is_none()
     }
@@ -210,9 +188,9 @@ impl<A: Ord> SVClock<A> {
     /// for two `VClock` instances.
     pub fn intersection(left: &SVClock<A>, right: &SVClock<A>) -> SVClock<A>
     where
-        A: Clone + Send + 'static,
+        A: Send + Clone + Send + 'static,
     {
-        let dots = SkipMap::new();
+        let dots = SyncMap::default();
         for e in left.dots.iter() {
             let (left_actor, left_counter) = (e.key(), e.value());
             let right_counter = right.get(left_actor);
@@ -240,7 +218,10 @@ impl<A: Ord> SVClock<A> {
     /// c.glb(&c2); // should remove the 43 => 1 entry
     /// assert_eq!(c.get(&43), 0);
     /// ```
-    pub fn glb(&mut self, other: &Self) {
+    pub fn glb(&mut self, other: &Self)
+    where
+        A: 'static,
+    {
         self.dots = mem::take(&mut self.dots)
             .into_iter()
             .filter_map(|(actor, count)| {
@@ -262,11 +243,11 @@ impl<A: Ord> SVClock<A> {
 }
 
 /// Generated from calls to VClock::into_iter()
-pub struct IntoIter<A: Ord> {
+pub struct IntoIter<A: Send + Ord> {
     map_iter: crossbeam_skiplist::map::IntoIter<A, u64>,
 }
 
-impl<A: Ord> std::iter::Iterator for IntoIter<A> {
+impl<A: Send + Ord> std::iter::Iterator for IntoIter<A> {
     type Item = Dot<A>;
 
     fn next(&mut self) -> Option<Dot<A>> {
@@ -276,7 +257,7 @@ impl<A: Ord> std::iter::Iterator for IntoIter<A> {
     }
 }
 
-impl<A: Ord> std::iter::IntoIterator for SVClock<A> {
+impl<A: Send + Ord + 'static> std::iter::IntoIterator for SVClock<A> {
     type IntoIter = IntoIter<A>;
     type Item = Dot<A>;
 
@@ -288,7 +269,7 @@ impl<A: Ord> std::iter::IntoIterator for SVClock<A> {
     }
 }
 
-impl<A: Ord + Clone + Debug + Send + 'static> std::iter::FromIterator<Dot<A>> for SVClock<A> {
+impl<A: Send + Ord + Clone + Debug + 'static> std::iter::FromIterator<Dot<A>> for SVClock<A> {
     fn from_iter<I: IntoIterator<Item = Dot<A>>>(iter: I) -> Self {
         let clock = SVClock::default();
 
@@ -300,7 +281,7 @@ impl<A: Ord + Clone + Debug + Send + 'static> std::iter::FromIterator<Dot<A>> fo
     }
 }
 
-impl<A: Ord + Clone + Debug + Send + 'static> From<Dot<A>> for SVClock<A> {
+impl<A: Send + Ord + Clone + Debug + 'static> From<Dot<A>> for SVClock<A> {
     fn from(dot: Dot<A>) -> Self {
         let clock = SVClock::default();
         (&clock).synced_apply(dot);
@@ -312,7 +293,7 @@ impl<A: Ord + Clone + Debug + Send + 'static> From<Dot<A>> for SVClock<A> {
 use quickcheck::{Arbitrary, Gen};
 
 #[cfg(feature = "quickcheck")]
-impl<A: Ord + Clone + Debug + Arbitrary + Send + Sync> Arbitrary for SVClock<A> {
+impl<A: Send + Ord + Clone + Debug + Arbitrary + Sync> Arbitrary for SVClock<A> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let mut clock = SVClock::default();
 

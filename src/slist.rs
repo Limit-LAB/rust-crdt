@@ -2,40 +2,23 @@
 
 use core::{fmt, iter::FromIterator};
 
-use crossbeam_skiplist::{map::Entry, SkipMap};
+use crossbeam_skiplist::map::Entry;
 use num::BigRational;
 
-use crate::{list::Op, CmRDT, Identifier, OrdDot, SVClock, SyncedCmRDT};
+use crate::{list::Op, sync::SyncMap, CmRDT, Identifier, ListEntry, OrdDot, SVClock, SyncedCmRDT};
 
 /// As described in the module documentation:
 ///
 /// A List is a CRDT for storing sequences of data (Strings, ordered lists).
 /// It provides an efficient view of the stored sequence, with fast index,
 /// insertion and deletion operations.
-#[derive(Debug)]
-pub struct SList<T, A: Ord> {
-    seq: SkipMap<Identifier<OrdDot<A>>, T>,
+#[derive(Debug, Clone)]
+pub struct SList<T: Send + 'static, A: Send + Ord + 'static> {
+    seq: SyncMap<Identifier<OrdDot<A>>, T>,
     clock: SVClock<A>,
 }
 
-impl<T, A> Clone for SList<T, A>
-where
-    T: Clone + Send + 'static,
-    A: Clone + Ord + Send + 'static,
-{
-    fn clone(&self) -> Self {
-        let seq = SkipMap::new();
-        self.seq.iter().for_each(|e| {
-            seq.insert(e.key().clone(), e.value().clone());
-        });
-        Self {
-            seq,
-            clock: self.clock.clone(),
-        }
-    }
-}
-
-impl<T, A: Ord> Default for SList<T, A> {
+impl<T: Send, A: Send + Ord> Default for SList<T, A> {
     fn default() -> Self {
         Self {
             seq: Default::default(),
@@ -44,7 +27,12 @@ impl<T, A: Ord> Default for SList<T, A> {
     }
 }
 
-impl<T, A: Ord> SList<T, A> {
+impl<T: Send, A: Send + Ord> SList<T, A> {
+    /// Create an empty List
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Get the length of the List.
     pub fn len(&self) -> usize {
         self.seq.len()
@@ -56,27 +44,49 @@ impl<T, A: Ord> SList<T, A> {
     }
 
     /// Get each elements identifier and value from the List.
-    pub fn iter_entries(&self) -> impl Iterator<Item = Entry<'_, Identifier<OrdDot<A>>, T>> {
-        self.seq.iter()
+    pub fn iter(&self) -> impl Iterator<Item = ListEntry<'_, A, T>> {
+        self.seq.iter().map(From::from)
     }
 
     /// Get the first Entry of the sequence represented by the List.
-    pub fn first_entry(&self) -> Option<Entry<'_, Identifier<OrdDot<A>>, T>> {
-        self.seq.iter().next()
+    pub fn first(&self) -> Option<ListEntry<'_, A, T>> {
+        self.seq.iter().next().map(From::from)
     }
 
     /// Get the last Entry of the sequence represented by the List.
-    pub fn last_entry(&self) -> Option<Entry<'_, Identifier<OrdDot<A>>, T>> {
-        self.seq.iter().rev().next()
+    pub fn last(&self) -> Option<ListEntry<'_, A, T>> {
+        self.seq.iter().rev().next().map(From::from)
+    }
+
+    /// Get an element at a position in the sequence represented by the List.
+    pub fn position(&self, ix: usize) -> Option<ListEntry<'_, A, T>> {
+        self.iter().nth(ix)
+    }
+
+    /// Finds an element by its Identifier.
+    pub fn get(&self, id: &Identifier<OrdDot<A>>) -> Option<ListEntry<'_, A, T>> {
+        self.seq.get(id).map(From::from)
+    }
+
+    /// Insert value with at the given identifier in the List
+    fn insert(&self, id: Identifier<OrdDot<A>>, val: T) {
+        // Inserts only have an impact if the identifier is not in the tree
+        self.seq.get_or_insert(id, val);
+    }
+
+    /// Remove the element with the given identifier from the List
+    fn delete(&self, id: &Identifier<OrdDot<A>>) -> Option<Entry<Identifier<OrdDot<A>>, T>>
+    where
+        Identifier<OrdDot<A>>: Send,
+        T: Send + 'static,
+        A: Send + 'static,
+    {
+        // Deletes only have an effect if the identifier is already in the tree
+        self.seq.remove(id)
     }
 }
 
-impl<T, A: Ord + Clone> SList<T, A> {
-    /// Create an empty List
-    pub fn new() -> Self {
-        Self::default()
-    }
-
+impl<T: Send, A: Send + Ord + Clone> SList<T, A> {
     /// Generate an op to insert the given element with given id.
     pub fn insert_id(&self, id: impl Into<BigRational>, val: T, actor: A) -> Op<T, A> {
         let dot = self.clock.inc(actor);
@@ -185,52 +195,11 @@ impl<T, A: Ord + Clone> SList<T, A> {
     /// list.apply(list.append(3, 'A'));
     /// assert_eq!(list.read_into::<Vec<_>>(), vec![1, 2, 3]);
     /// ```
-    pub fn read_into<C: FromIterator<T>>(self) -> C {
-        self.seq.into_iter().map(|(_, v)| v).collect()
-    }
-}
-
-impl<T: Clone, A: Ord> SList<T, A> {
-    /// Get the elements represented by the List.
-    pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
-        self.seq.iter().map(|id| id.value().clone())
-    }
-
-    /// Get an element at a position in the sequence represented by the List.
-    pub fn position(&self, ix: usize) -> Option<T> {
-        self.iter().nth(ix).clone()
-    }
-
-    /// Finds an element by its Identifier.
-    pub fn get(&self, id: &Identifier<OrdDot<A>>) -> Option<T> {
-        self.seq.get(id).map(|x| x.value().clone())
-    }
-
-    /// Get first element of the sequence represented by the List.
-    pub fn first(&self) -> Option<T> {
-        self.first_entry().map(|e| e.value().clone())
-    }
-
-    /// Get last element of the sequence represented by the List.
-    pub fn last(&self) -> Option<T> {
-        self.last_entry().map(|e| e.value().clone())
-    }
-
-    /// Insert value with at the given identifier in the List
-    fn insert(&self, id: Identifier<OrdDot<A>>, val: T) {
-        // Inserts only have an impact if the identifier is not in the tree
-        self.seq.get_or_insert(id, val);
-    }
-
-    /// Remove the element with the given identifier from the List
-    fn delete(&self, id: &Identifier<OrdDot<A>>) -> Option<Entry<Identifier<OrdDot<A>>, T>>
+    pub fn read_into<C: FromIterator<T>>(self) -> C
     where
-        Identifier<OrdDot<A>>: Send,
-        T: Send + 'static,
-        A: 'static,
+        T: 'static,
     {
-        // Deletes only have an effect if the identifier is already in the tree
-        self.seq.remove(id)
+        self.seq.into_iter().map(|(_, v)| v).collect()
     }
 }
 
@@ -238,7 +207,7 @@ impl<T, A> CmRDT for SList<T, A>
 where
     T: Clone + Send + 'static,
     Identifier<OrdDot<A>>: Send,
-    A: Ord + Clone + Send + fmt::Debug + 'static,
+    A: Send + Ord + Clone + Send + fmt::Debug + 'static,
 {
     type Op = Op<T, A>;
     type Validation = crate::DotRange<A>;
@@ -263,7 +232,7 @@ impl<T, A> SyncedCmRDT for SList<T, A>
 where
     T: Clone + Send + 'static,
     Identifier<OrdDot<A>>: Send,
-    A: Ord + Clone + Send + fmt::Debug + 'static,
+    A: Ord + Clone + fmt::Debug + Send + 'static,
 {
     fn synced_apply(&self, op: Self::Op) {
         let op_dot = op.dot();
