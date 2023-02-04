@@ -4,6 +4,7 @@ use core::{fmt, iter::FromIterator};
 
 use crossbeam_skiplist::map::Entry;
 use num::BigRational;
+use serde::{Deserialize, Serialize};
 
 use crate::{list::Op, sync::SyncMap, CmRDT, Identifier, ListEntry, OrdDot, SVClock, SyncedCmRDT};
 
@@ -12,7 +13,7 @@ use crate::{list::Op, sync::SyncMap, CmRDT, Identifier, ListEntry, OrdDot, SVClo
 /// A List is a CRDT for storing sequences of data (Strings, ordered lists).
 /// It provides an efficient view of the stored sequence, with fast index,
 /// insertion and deletion operations.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SList<T: Send + 'static, A: Send + Ord + 'static> {
     seq: SyncMap<Identifier<OrdDot<A>>, T>,
     clock: SVClock<A>,

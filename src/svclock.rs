@@ -20,12 +20,13 @@ use core::{
 };
 
 use crossbeam_skiplist::map::Entry;
+use serde::{Deserialize, Serialize};
 
 use crate::{sync::SyncMap, CmRDT, Dot, DotRange, SyncedCmRDT};
 
 /// A `SVClock` is a synced version of [`VClock`].
 /// It is possible to update a `SVClock` with a immutable reference.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SVClock<A: Ord + Send + 'static> {
     /// dots is the mapping from actors to their associated counters
     pub dots: SyncMap<A, u64>,
