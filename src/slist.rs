@@ -69,6 +69,18 @@ impl<T: Send, A: Send + Ord> SList<T, A> {
         self.seq.get(id).map(From::from)
     }
 
+    /// Remove the first element from the List and return it, or None if it is
+    /// empty.
+    pub fn pop_front(&self) -> Option<ListEntry<'_, A, T>> {
+        self.seq.pop_front().map(From::from)
+    }
+
+    /// Remove the last element from the List and return it, or None if it is
+    /// empty.
+    pub fn pop_back(&self) -> Option<ListEntry<'_, A, T>> {
+        self.seq.pop_back().map(From::from)
+    }
+
     /// Insert value with at the given identifier in the List
     fn insert(&self, id: Identifier<OrdDot<A>>, val: T) {
         // Inserts only have an impact if the identifier is not in the tree
@@ -76,12 +88,7 @@ impl<T: Send, A: Send + Ord> SList<T, A> {
     }
 
     /// Remove the element with the given identifier from the List
-    fn delete(&self, id: &Identifier<OrdDot<A>>) -> Option<Entry<Identifier<OrdDot<A>>, T>>
-    where
-        Identifier<OrdDot<A>>: Send,
-        T: Send + 'static,
-        A: Send + 'static,
-    {
+    fn delete(&self, id: &Identifier<OrdDot<A>>) -> Option<Entry<Identifier<OrdDot<A>>, T>> {
         // Deletes only have an effect if the identifier is already in the tree
         self.seq.remove(id)
     }
