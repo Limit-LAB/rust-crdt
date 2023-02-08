@@ -119,7 +119,9 @@ impl<A: Send + Ord + Clone + Debug + 'static> SyncedCmRDT for SVClock<A> {
 impl<A: Send + Ord> SVClock<A> {
     /// Returns a new `VClock` instance.
     pub fn new() -> Self {
-        Default::default()
+        Self {
+            dots: SyncMap::default(),
+        }
     }
 
     /// Generate Op to increment an actor's counter.

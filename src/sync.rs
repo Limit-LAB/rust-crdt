@@ -11,6 +11,12 @@ use crate::{Identifier, OrdDot};
 
 pub struct SyncMap<K, V>(SkipMap<K, V>);
 
+impl<K, V> SyncMap<K, V> {
+    pub fn new() -> Self {
+        Self(SkipMap::new())
+    }
+}
+
 impl<K, V> Debug for SyncMap<K, V>
 where
     SkipMap<K, V>: Debug,
@@ -22,7 +28,7 @@ where
 
 impl<K, V> Default for SyncMap<K, V> {
     fn default() -> Self {
-        Self(SkipMap::new())
+        Self::new()
     }
 }
 
